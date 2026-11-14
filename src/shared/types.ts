@@ -58,12 +58,22 @@ export interface AudioBookmark {
   start: number;
   end: number;
 }
+export interface NoteSegment {
+  id: string;
+  sourceId: string;
+  sceneId: SceneId;
+  version: string;
+  start: number;
+  end: number;
+  text: string;
+  clueId: string | null;
+}
 export interface EvidenceNote {
   id: string;
   clueId: string | null;
   title: string;
   text: string;
-  anchor: AudioBookmark;
+  segments: NoteSegment[];
   createdAt: number;
   pinned: boolean;
 }

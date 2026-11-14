@@ -243,10 +243,15 @@ export function App() {
                 state={c.evidence}
                 content={CASE_CONTENT}
                 onJump={c.jump}
-                onEdit={c.edit}
+                onEditConclusion={c.editConclusion}
+                onEditSegment={c.editSegmentText}
                 onDelete={c.remove}
                 onPin={c.pin}
                 onNew={c.note}
+                onAppend={c.appendSegment}
+                onOrder={c.orderSegment}
+                onRemoveSegment={c.removeSegment}
+                onMerge={c.merge}
               />
             )}
             <div className="clue-tracker">
@@ -321,7 +326,10 @@ export function App() {
               当你听到可疑声音，收集字幕下方的声音线索。已掌握的线索会改变角色回答，并解锁新的调查方向。
             </p>
             <p>
-              用「标记此刻」保留最近五秒的个人笔记，编辑观察，再从笔记跳回录音。自由笔记不会自动解锁证据。
+              用「记一笔」保留最近五秒的个人笔记，编辑观察，再从笔记跳回录音。自由笔记不会自动解锁证据。
+            </p>
+            <p>
+              一篇手记可收纳钟声、证词、旧磁带等多段来源：每段可单独写观察、排序与回听，并在整篇末尾写下结论。同源且重叠的范围可在确认文字与范围变化后合并；不同版本即使时间相同也不会并为一段。移除片段不会撤销已收集的正式证据，最后一段移除后手记保留为无音源文字手记。
             </p>
             <p>
               从「调查存档」命名保存不同进度，也可导出或导入本地文件。新调查保留已有存档；切换存档会替换当前未保存进度，请先保存。

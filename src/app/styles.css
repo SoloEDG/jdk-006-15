@@ -1660,3 +1660,183 @@ footer i {
   display: block;
   margin-bottom: 10px;
 }
+
+/* ===== 组合手记：多段来源 ===== */
+.segment-list {
+  list-style: none;
+  margin: 10px 0 4px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.segment-card {
+  border: 1px solid #2d4554;
+  border-radius: 4px;
+  background: #111f29;
+  padding: 9px;
+}
+.segment-card.is-unavailable {
+  border-style: dashed;
+  border-color: #6b5a4e;
+  opacity: 0.85;
+}
+.segment-card.is-selected {
+  border-color: #c6b17d;
+  box-shadow: 0 0 0 1px #c6b17d55;
+}
+.segment-card.is-mergeable {
+  border-color: #7d9a7e;
+}
+.segment-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.segment-index {
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  color: #c6b17d;
+  border: 1px solid #5a5947;
+  border-radius: 3px;
+  padding: 2px 5px;
+  white-space: nowrap;
+}
+.segment-version {
+  font: 8px monospace;
+  color: #7896a6;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.segment-text {
+  margin: 4px 0;
+  white-space: pre-wrap;
+}
+.segment-card .note-play {
+  width: 100%;
+  padding: 5px 0;
+  border-top: 1px solid #243845;
+  margin-top: 4px;
+}
+.segment-card .note-play:disabled {
+  color: #8a7568;
+  cursor: not-allowed;
+}
+.segment-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+  padding-top: 7px;
+  border-top: 1px solid #243845;
+}
+.segment-actions button {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 8px;
+  color: #7c99a9;
+  background: none;
+  padding: 0;
+}
+.segment-actions button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.segment-actions button.active {
+  color: #d8b980;
+}
+.text-only-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: #a48f76;
+  background: #1a242c;
+  border: 1px dashed #4d5a55;
+  border-radius: 4px;
+  padding: 10px;
+  margin: 10px 0;
+}
+.conclusion-block {
+  border-top: 1px solid #2f4350;
+  margin-top: 12px;
+  padding-top: 10px;
+}
+.conclusion-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 5px;
+}
+.conclusion-head button {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 8px;
+  color: #7c99a9;
+}
+.conclusion-text {
+  white-space: pre-wrap;
+  color: #b6c6cd;
+}
+.merge-confirm {
+  border: 1px solid #786e4d;
+  border-radius: 4px;
+  background: #1c2720;
+  padding: 10px;
+  margin: 10px 0;
+}
+.merge-confirm-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #d8b980;
+}
+.merge-confirm-head strong {
+  font-size: 10px;
+  flex: 1;
+}
+.merge-hint {
+  font-size: 9px;
+  color: #8aa092;
+  line-height: 1.7;
+  margin: 7px 0;
+}
+.merge-before {
+  font: 9px monospace;
+  color: #a9bdc8;
+  line-height: 1.8;
+  margin: 0 0 8px;
+}
+.merge-empty {
+  font-size: 9px;
+  color: #8a7568;
+}
+.merge-option {
+  border-top: 1px solid #31463a;
+  padding-top: 8px;
+  margin-top: 8px;
+}
+.merge-range-change {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  font: 9px monospace;
+  color: #9db2bf;
+}
+.merge-range-change .merge-after {
+  color: #d8b980;
+}
+.merge-text-change {
+  font-size: 9px;
+  color: #8aa092;
+  line-height: 1.7;
+  margin: 7px 0;
+  white-space: pre-wrap;
+}

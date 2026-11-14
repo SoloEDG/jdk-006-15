@@ -1,9 +1,9 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import type {
   HeardHistory,
   SaveSlot,
   SceneId,
-  EvidenceNote,
+  NoteSegment,
   Cue,
 } from "../shared/types";
 import {
@@ -17,11 +17,18 @@ import { useTransport, recordPosition } from "../features/listening";
 import {
   createEvidence,
   addNote,
+  addSegment,
   collectClue,
   editNote,
+  editSegment,
+  moveSegment,
+  removeSegment,
+  mergeSegments,
   deleteNote,
   togglePinned,
+  isSegmentAvailable,
 } from "../features/evidence";
+import type { MergePreview } from "../features/evidence";
 import {
   readSlots,
   createSnapshot,
@@ -32,6 +39,7 @@ import {
   exportSlot,
   validateSnapshot,
 } from "../features/profiles";
+const DEFAULT_OBSERVATION = "在这里写下你的观察…";
 export function useCase() {
   const [boot] = useState(() => readSlots(CASE_CONTENT));
   const [story, setStory] = useState(createInvestigation),
@@ -78,31 +86,45 @@ export function useCase() {
           : "调查方向已更新，点击播放继续收听。",
       );
     });
+  /** 捕捉当前播放位置，连同当前音源版本一起带回。 */
+  const captureCurrent = () => {
+    const bookmark = audio.captureRange(story.sceneId, 5);
+    if (!bookmark) return null;
+    return {
+      sourceId: episode.id,
+      sceneId: bookmark.sceneId,
+      version: episode.version,
+      start: bookmark.start,
+      end: bookmark.end,
+    };
+  };
   const note = () => {
-    const anchor = audio.captureRange(story.sceneId, 5);
-    if (!anchor) {
+    const range = captureCurrent();
+    if (!range) {
       setNotice("请等待录音载入后再标记");
       return;
     }
-    setEvidence((s) => addNote(s, anchor, "在这里写下你的观察…", "声音标记"));
+    setEvidence((s) =>
+      addNote(s, { ...range, text: DEFAULT_OBSERVATION }, "声音标记"),
+    );
     setDirty(true);
     setNotice("已记录最近五秒，可在笔记中编辑或回听。");
   };
-  const collect = (cue: Cue) => {
-    const anchor = audio.captureRange(
-      story.sceneId,
-      Math.max(
-        1,
-        (cue.sound?.end || cue.end) - (cue.sound?.start || cue.start),
-      ),
-    );
-    if (!anchor) return;
-    const sound = cue.sound;
-    const result = collectClue(evidence, episode, cue, heard, {
-      ...anchor,
-      start: sound?.start ?? cue.start,
-      end: sound?.end ?? cue.end,
+  /** 把当前正在听的片段追加进指定手记，作为新的一段来源。 */
+  const appendSegment = (noteId: string) =>
+    run(() => {
+      const range = captureCurrent();
+      if (!range) throw new Error("请等待录音载入后再标记");
+      setEvidence((s) =>
+        addSegment(s, noteId, { ...range, text: DEFAULT_OBSERVATION }),
+      );
+      setDirty(true);
+      setNotice("已把当前声音作为新的一段加入这篇手记。");
     });
+  const collect = (cue: Cue) => {
+    const sound = cue.sound;
+    if (!sound) return;
+    const result = collectClue(evidence, episode, cue, heard);
     if (!result) {
       setNotice("请先听完这段声音，或检查是否已收集。");
       return;
@@ -112,9 +134,13 @@ export function useCase() {
     setDirty(true);
     setNotice("声音线索已归档，对话可能因此发生变化。");
   };
-  const jump = (n: EvidenceNote) => {
-    go(n.anchor.sceneId, n.anchor.start);
-    setNotice(`已定位到「${n.title}」对应声音，点击播放回听。`);
+  const jump = (segment: NoteSegment) => {
+    if (!isSegmentAvailable(CASE_CONTENT, segment)) {
+      setNotice("这段音源已失效，无法回听；其余片段与手记内容仍保留。");
+      return;
+    }
+    go(segment.sceneId, segment.start);
+    setNotice("已定位到对应声音，点击播放回听。");
   };
   const save = (name: string) =>
     run(() => {
@@ -191,15 +217,42 @@ export function useCase() {
     go,
     choose,
     note,
+    appendSegment,
     collect,
     jump,
     save,
     load,
     importText,
     download,
-    edit: (id: string, text: string) => {
-      setEvidence((s) => editNote(s, id, text));
+    editConclusion: (id: string, text: string) => {
+      run(() => {
+        setEvidence((s) => editNote(s, id, text));
+        setDirty(true);
+      });
+    },
+    editSegmentText: (noteId: string, segmentId: string, text: string) => {
+      run(() => {
+        setEvidence((s) => editSegment(s, noteId, segmentId, text));
+        setDirty(true);
+      });
+    },
+    orderSegment: (noteId: string, segmentId: string, direction: -1 | 1) => {
+      setEvidence((s) => moveSegment(s, noteId, segmentId, direction));
       setDirty(true);
+    },
+    removeSegment: (noteId: string, segmentId: string) => {
+      run(() => {
+        setEvidence((s) => removeSegment(s, noteId, segmentId));
+        setDirty(true);
+        setNotice("已移除该片段，已收集的正式证据不会被撤销。");
+      });
+    },
+    merge: (noteId: string, preview: MergePreview) => {
+      run(() => {
+        setEvidence((s) => mergeSegments(s, noteId, preview));
+        setDirty(true);
+        setNotice("同源重叠范围已合并为一段。");
+      });
     },
     remove: (id: string) => {
       setEvidence((s) => deleteNote(s, id));

@@ -1,8 +1,8 @@
 import type {
-  AudioBookmark,
   CaseContent,
   CaseSnapshot,
   EvidenceNote,
+  NoteSegment,
   SceneId,
 } from "../../../shared/types";
 type Obj = Record<string, unknown>;
@@ -47,21 +47,63 @@ export function validateSnapshot(
       throw new Error("存档包含未知线索");
     return id;
   };
-  const duration = (id: SceneId) =>
+  const durationOfScene = (id: SceneId) =>
     Math.max(
       0,
       ...content.episodes
         .filter((episode) => episode.sceneId === id)
         .map((episode) => episode.duration),
     );
-  const anchor = (value: unknown): AudioBookmark => {
-    const a = object(value, "笔记锚点");
-    const sceneId = scene(a.sceneId),
-      start = number(a.start, "范围起点"),
-      end = number(a.end, "范围终点");
-    if (end < start || end > duration(sceneId))
+  /**
+   * 旧格式（单 anchor 笔记）在这里迁移成单段组合手记。
+   * 音源在案件中已失效（sourceId 找不到）时只跳过范围越界校验，
+   * 段落原样保留，回听由界面按可用性禁用。
+   */
+  const segment = (value: unknown): NoteSegment => {
+    const s = object(value, "笔记片段");
+    const sceneId = scene(s.sceneId);
+    const sourceId = string(s.sourceId, "音源");
+    const start = number(s.start, "范围起点");
+    const end = number(s.end, "范围终点");
+    const episode = content.episodes.find((item) => item.id === sourceId);
+    if (episode && episode.sceneId !== sceneId)
+      throw new Error("片段音源与场景不一致");
+    if (end < start) throw new Error("笔记范围无效");
+    // 音源已失效时无法得知原始时长，跳过越界校验、原样保留，
+    // 只在界面禁用该段回听，绝不牵连其余片段或整篇手记。
+    if (episode && end > episode.duration)
       throw new Error("笔记范围超出音频");
-    return { sceneId, start, end };
+    return {
+      id: string(s.id, "片段编号"),
+      sourceId,
+      sceneId,
+      version: string(s.version, "音源版本"),
+      start,
+      end,
+      text: string(s.text, "片段观察"),
+      clueId: s.clueId === null || s.clueId === undefined ? null : clue(s.clueId),
+    };
+  };
+  const legacyAnchor = (value: unknown, noteId: string): NoteSegment => {
+    const a = object(value, "笔记锚点");
+    const sceneId = scene(a.sceneId);
+    const start = number(a.start, "范围起点");
+    const end = number(a.end, "范围终点");
+    if (end < start || end > durationOfScene(sceneId))
+      throw new Error("笔记范围超出音频");
+    const episode = content.episodes.find(
+      (item) => item.sceneId === sceneId,
+    );
+    return {
+      id: `${noteId}-segment`,
+      sourceId: episode?.id ?? `${sceneId}-unknown`,
+      sceneId,
+      version: episode?.version ?? "未知版本",
+      start,
+      end,
+      text: "",
+      clueId: null,
+    };
   };
   const rawStory = object(root.story, "调查进度");
   const decisions = array(rawStory.decisions, "决策").map((value) => {
@@ -88,12 +130,34 @@ export function validateSnapshot(
       const n = object(value, "笔记");
       const id = string(n.id, "笔记编号");
       if (!id) throw new Error("笔记编号为空");
+      const clueId =
+        n.clueId === null || n.clueId === undefined ? null : clue(n.clueId);
+      const text = string(n.text, "笔记内容");
+      let segments: NoteSegment[];
+      if (n.segments !== undefined) {
+        // 空数组合法：最后一段被删除后保留的无音源文字手记。
+        segments = array(n.segments, "笔记片段").map(segment);
+        const ids = new Set<string>();
+        for (const item of segments) {
+          if (ids.has(item.id)) throw new Error("片段编号重复");
+          ids.add(item.id);
+        }
+      } else if (n.anchor && typeof n.anchor === "object") {
+        // 旧版单段笔记：迁移为组合手记，原正文放入该段观察，结论留空。
+        const migrated = legacyAnchor(n.anchor, id);
+        migrated.text = text;
+        migrated.clueId = clueId;
+        segments = [migrated];
+      } else {
+        throw new Error("笔记缺少音源片段");
+      }
       return {
         id,
-        clueId: n.clueId === null ? null : clue(n.clueId),
+        clueId,
         title: string(n.title, "笔记标题"),
-        text: string(n.text, "笔记内容"),
-        anchor: anchor(n.anchor),
+        // 新格式下 text 是整篇结论；旧格式的正文已迁入片段。
+        text: n.segments !== undefined ? text : "",
+        segments,
         createdAt: number(n.createdAt, "笔记日期"),
         pinned: boolean(n.pinned, "置顶"),
       };
@@ -121,7 +185,7 @@ export function validateSnapshot(
   const sceneId = scene(rawResume.sceneId),
     position = number(rawResume.position, "播放位置"),
     rate = number(rawResume.rate, "播放速度");
-  if (position > duration(sceneId) || rate < 0.25 || rate > 4)
+  if (position > durationOfScene(sceneId) || rate < 0.25 || rate > 4)
     throw new Error("播放进度无效");
   return {
     version: 1,

@@ -1,5 +1,4 @@
 import type {
-  AudioBookmark,
   Cue,
   Episode,
   EvidenceState,
@@ -12,22 +11,26 @@ export function collectClue(
   episode: Episode,
   cue: Cue,
   heard: HeardHistory,
-  bookmark: AudioBookmark,
 ): EvidenceState | null {
+  const sound = cue.sound;
   if (
-    !cue.sound ||
-    state.clues.includes(cue.sound.clueId) ||
+    !sound ||
+    state.clues.includes(sound.clueId) ||
     !canCollectSound(heard, episode, cue)
   )
     return null;
-  const next = addNote(state, bookmark, cue.sound.description, "声音线索");
-  return {
-    ...next,
-    clues: [...state.clues, cue.sound.clueId],
-    notes: next.notes.map((note) =>
-      note.id === next.selectedId
-        ? { ...note, clueId: cue.sound!.clueId }
-        : note,
-    ),
-  };
+  const next = addNote(
+    state,
+    {
+      sourceId: episode.id,
+      sceneId: episode.sceneId,
+      version: episode.version,
+      start: sound.start,
+      end: sound.end,
+      text: sound.description,
+      clueId: sound.clueId,
+    },
+    "声音线索",
+  );
+  return { ...next, clues: [...state.clues, sound.clueId] };
 }
